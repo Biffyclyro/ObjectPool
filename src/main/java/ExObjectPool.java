@@ -1,14 +1,24 @@
-import lombok.SneakyThrows;
+import org.postgresql.ds.PGSimpleDataSource;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class ExObjectPool {
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws SQLException {
 
-        final var objectPool = new PoolConcrete(Printador::new);
+        final var ds = new PGSimpleDataSource();
+        ds.setDatabaseName("");
+        ds.setUser("");
+        ds.setPassword("");
+
+        final var objectPool = new PoolConcrete(ds);
         final int NUM_THREADS = 30;
         final List<Thread> threads = new ArrayList<>(NUM_THREADS);
 
@@ -37,8 +47,8 @@ public class ExObjectPool {
 
 
     static class ThreadTeste implements Runnable{
-        private PoolConcrete<Printador> pool;
-        Printador obj;
+        private PoolConcrete pool;
+        Connection conn;
 
         public ThreadTeste(PoolConcrete pool) {
             this.pool = pool;
@@ -48,9 +58,13 @@ public class ExObjectPool {
         @Override
         public void run() {
 
-            this.obj = pool.acquire();
+            try {
+                this.conn = pool.acquire();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
 
-            obj.printar();
+
 
             try {
                 Thread.sleep(1000);
@@ -58,8 +72,11 @@ public class ExObjectPool {
                 e.printStackTrace();
             }
 
-            pool.release(obj);
-
+            try {
+                this.conn.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
 
 
         }
